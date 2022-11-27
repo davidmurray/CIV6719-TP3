@@ -1,0 +1,136 @@
+---
+title: "TP3"
+output: html_document
+date: "2022-11-27"
+---
+
+## Libraries
+```{r}
+rm(list=ls())
+library(dplyr) 
+library(ggplot2) # Create Elegant Data Visualisations Using the Grammar of Graphics
+library(mlogit) # Multinomial Logit Models
+library(tidyverse)
+```
+
+## Load data
+```{r}
+df <- read_csv2("donnees_TP3.csv")
+
+df$TEMPS.VP <- as.numeric(sub(",", ".", df$TEMPS.VP, fixed = TRUE))
+df$TEMPS.TC <- as.numeric(sub(",", ".", df$TEMPS.TC, fixed = TRUE))
+
+df$IPERE <- as.factor(df$IPERE)
+#df$P_GRAGE <- as.factor(df$M_DOMSR)
+df$M_DOMSR <- as.factor(df$M_DOMSR)
+df$ID_PERS <- as.factor(df$ID_PERS)
+df$M_NUMERO <- as.factor(df$M_NUMERO) 
+df$ID_DEPLAC <- as.factor(df$ID_DEPLAC)
+df$MOTIF <- as.factor(df$MOTIF)
+df$D_DEPLAC <- as.factor(df$D_DEPLAC)
+df$D_DESSR <- as.factor(df$D_DESSR)
+df$D_GRHRE <- factor(df$D_GRHRE, levels=c('1', '2', '3', '4', '5', '6', '7'),
+  labels=c('0h-4h59',
+           '5h-8h59',
+           '9h-11h59',
+           '12h-14h59',
+           '15h-18h59',
+           '19h-23h59',
+           '24h-28h'))
+
+df$HRE2 <- factor(df$HRE2, levels=c('1', '2'),
+  labels=c('Pointe',
+           'Hors-pointe'))
+
+  
+df$P_STATUT <- factor(df$P_STATUT, levels=c('1', '2', '3', '4', '5', '6', '7', '8'),
+  labels=c('Travailleur à temps plein',
+           'Travailleur à temps partiel',
+           'Étudiant / élève',
+           'Retraité',
+           'Autre',
+           'N/A',
+           'À la maison',
+           'Refus'))
+
+df$P_PERMIS <- factor(df$P_PERMIS, levels=c('1', '2', '3', '4', '5'),
+  labels=c('Oui',
+           'Non',
+           'Ne sait pas',
+           'Refus',
+           'Non applicable'))
+df$P_MOBIL <- factor(df$P_MOBIL, levels=c('1', '2', '3', '4', '5', '6'),
+  labels=c('Oui',
+           'Non',
+           'N/A',
+           'Ne sait pas',
+           'Refus',
+           'Ne sait pas comment'))
+
+df$REVENU <- factor(df$REVENU, levels=c('1', '2', '3', '4', '5', '6', '7', '8'),
+  labels=c('<30000',
+           '30000-59999',
+           '60000-89999',
+           '90000-119999',
+           '12000-149999',
+           '>150000',
+           'Refus',
+           'Ne sait pas'))
+
+df$P_GRAGE <- factor(df$P_GRAGE, levels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16),
+  labels=c('0 à 4',
+           '5 à 9',
+           '10 à 14',
+           '15 à 19',
+           '20 à 24',
+           '25 à 29',
+           '30 à 34',
+           '35 à 39',
+           '40 à 44',
+           '45 à 49',
+           '50 à 54',
+           '55 à 59',
+           '60 à 64',
+           '65 à 69',
+           '70 à 74',
+           '75+'))
+
+df$P_SEXE <- factor(df$P_SEXE, levels=c('1', '2'),
+  labels=c('H', 'F'))
+
+df$MODE <- factor(df$MODE, levels=c('VP', 'TC', 'Bimodal', 'M', 'B', 'X'),
+  labels=c('Véhicule personnel',
+           'Transport collectif',
+           'Bimodal',
+           'Marche',
+           'Vélo',
+           'Autre'))
+
+```
+
+## Data cleaning
+```{r}
+# Keep only rows where TEMPS.VP and TEMPS.TC is valid
+df_clean <- df %>%
+  filter(TEMPS.VP != 0 & TEMPS.TC != 0)
+
+# Keep only rows where selected mode is car, public transport, walk or bike
+df_clean <- df_clean %>%
+  filter(MODE %in% c('Véhicule personnel', 'Transport collectif', 'Marche', 'Vélo'))
+
+# Remove rows where TEMPS.TC or TEMPS.VP is NaN
+df_clean <- df_clean %>%
+  filter(!is.na(TEMPS.TC))
+df_clean <- df_clean %>%
+  filter(!is.na(TEMPS.VP))
+
+# Convert to wide format. This is required by the mlogit package.
+df_long <- df_clean %>%
+  mlogit.data(shape = "wide",
+              # Name of column with the choices
+              choice = "MODE",
+              # Numbers of columns with attributes that vary by alternative
+              varying = 42:45)
+df_long_viz = as.data.frame(df_long) # this is just so that we can visualize the df_long database in RStudio.
+```
+
