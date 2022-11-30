@@ -13,7 +13,7 @@ library(mlogit) # Multinomial Logit Models
 library(tidyverse)
 ```
 
-## Load data
+# Load data
 ```{r}
 df <- read_csv2("donnees_TP3.csv")
 
@@ -43,15 +43,29 @@ df$HRE2 <- factor(df$HRE2, levels=c('1', '2'),
            'Hors-pointe'))
 
   
+#df$P_STATUT <- factor(df$P_STATUT, levels=c('1', '2', '3', '4', '5', '6', '7', '8'),
+#  labels=c('Travailleur à temps plein',
+#           'Travailleur à temps partiel',
+#           'Étudiant / élève',
+#           'Retraité',
+#           'Autre',
+#           'N/A',
+#           'À la maison',
+#           'Refus'))
+
+# Puisqu'il y a vraiment peu d'observations pour les catégories "Autre", "N/A", "À la maison" et "Refus", on les regroupe sous la catégorie "Autre".
+#> summary(df$P_STATUT)
+#  Travailleur à temps plein Travailleur à temps partiel       Étudiant / élève       Retraité          Autre         N/A        À la maison       Refus
+#                      38351                        3115                   1047            263            193           0                 41           4
 df$P_STATUT <- factor(df$P_STATUT, levels=c('1', '2', '3', '4', '5', '6', '7', '8'),
   labels=c('Travailleur à temps plein',
            'Travailleur à temps partiel',
            'Étudiant / élève',
            'Retraité',
            'Autre',
-           'N/A',
-           'À la maison',
-           'Refus'))
+           'Autre',
+           'Autre',
+           'Autre'))
 
 df$P_PERMIS <- factor(df$P_PERMIS, levels=c('1', '2', '3', '4', '5'),
   labels=c('Oui',
@@ -98,39 +112,99 @@ df$P_GRAGE <- factor(df$P_GRAGE, levels=c(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16
 df$P_SEXE <- factor(df$P_SEXE, levels=c('1', '2'),
   labels=c('H', 'F'))
 
-df$MODE <- factor(df$MODE, levels=c('VP', 'TC', 'Bimodal', 'M', 'B', 'X'),
-  labels=c('Véhicule personnel',
-           'Transport collectif',
-           'Bimodal',
-           'Marche',
-           'Vélo',
-           'Autre'))
+#df$MODE <- factor(df$MODE, levels=c('VP', 'TC', 'Bimodal', 'M', 'B', 'X'),
+#  labels=c('Véhicule personnel',
+#           'Transport collectif',
+#           'Bimodal',
+#           'Marche',
+#           'Vélo',
+#           'Autre'))
+
+downtown = c(299436.06, 5040431.54) # In MTM NAD 83 (EPSG:32188)
+df <- df %>%
+ mutate(
+  D_DISTANCE2DOWNTOWN_KM = (((D_DESXCOOR - downtown[1]) ** 2 + (D_DESYCOOR - downtown[2]) ** 2) ** (0.5)) / 1000,
+ )
 
 ```
 
-## Data cleaning
+## Data cleaning and preparation
 ```{r}
 # Keep only rows where TEMPS.VP and TEMPS.TC is valid
-df_clean <- df %>%
+df <- df %>%
   filter(TEMPS.VP != 0 & TEMPS.TC != 0)
 
 # Keep only rows where selected mode is car, public transport, walk or bike
-df_clean <- df_clean %>%
-  filter(MODE %in% c('Véhicule personnel', 'Transport collectif', 'Marche', 'Vélo'))
+df <- df %>%
+  filter(MODE %in% c('VP', 'TC', 'M', 'B'))
+  #filter(MODE %in% c('Véhicule personnel', 'Transport collectif', 'Marche', 'Vélo'))
 
 # Remove rows where TEMPS.TC or TEMPS.VP is NaN
-df_clean <- df_clean %>%
+df <- df %>%
   filter(!is.na(TEMPS.TC))
-df_clean <- df_clean %>%
+df <- df %>%
   filter(!is.na(TEMPS.VP))
 
 # Convert to wide format. This is required by the mlogit package.
-df_long <- df_clean %>%
+df_long <- df %>%
   mlogit.data(shape = "wide",
               # Name of column with the choices
               choice = "MODE",
               # Numbers of columns with attributes that vary by alternative
               varying = 42:45)
 df_long_viz = as.data.frame(df_long) # this is just so that we can visualize the df_long database in RStudio.
+```
+
+# Model
+### Note à moi même:
+J'ai testé le modèle nested logit mais ça dit "singular" donc ça marche pas
+ou ça marche avec VP ou TC mais valeur inclusive est à deux donc les nids sont pas pertinents. Il faut dire ça dans le rapport
+
+```{r}
+ml0 <- mlogit(
+  MODE ~ TEMPS | AR_JOBS30 + AL,
+  df_long,
+)
+summary(ml0)
+```
+
+```{r}
+ml1 <- mlogit(
+  MODE ~ TEMPS | AR_JOBS30 + AL + HRE2,
+  df_long,
+)
+summary(ml1)
+```
+
+```{r}
+ml2 <- mlogit(
+  MODE ~ TEMPS | AR_JOBS30 + AL + HRE2 + M_PERS + D_DISTANCE2DOWNTOWN_KM,
+  df_long,
+)
+summary(ml2)
+```
+
+
+
+### Choses temporaires / brouillon
+```{r}
+p <- ggplot(df, aes(x=MODE, y=AR_JOBS30)) + 
+  geom_boxplot()
+p
+```
+```{r}
+print(summary(df$AR_JOBS30))
+
+
+```
+
+```{r}
+quantile(df$AR_JOBS30)
+```
+
+```{r}
+df %>%
+  filter(AR_JOBS30 <= 4575) %>%
+  count()
 ```
 
