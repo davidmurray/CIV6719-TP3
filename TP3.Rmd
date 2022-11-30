@@ -67,12 +67,6 @@ df$P_STATUT <- factor(df$P_STATUT, levels=c('1', '2', '3', '4', '5', '6', '7', '
            'Autre',
            'Autre'))
 
-df$P_PERMIS <- factor(df$P_PERMIS, levels=c('1', '2', '3', '4', '5'),
-  labels=c('Oui',
-           'Non',
-           'Ne sait pas',
-           'Refus',
-           'Non applicable'))
 df$P_MOBIL <- factor(df$P_MOBIL, levels=c('1', '2', '3', '4', '5', '6'),
   labels=c('Oui',
            'Non',
@@ -139,6 +133,15 @@ df <- df %>%
   filter(MODE %in% c('VP', 'TC', 'M', 'B'))
   #filter(MODE %in% c('Véhicule personnel', 'Transport collectif', 'Marche', 'Vélo'))
 
+df$MODE <- factor(df$MODE, levels=c('VP', 'TC', 'Bimodal', 'M', 'B', 'X'))
+
+# Keep only rows with "Oui" or "Non" for driver's license 
+df <- df %>%
+  filter(P_PERMIS %in% c('1', '2'))
+df$P_PERMIS <- factor(df$P_PERMIS, levels=c('1', '2'),
+  labels=c('Oui',
+           'Non'))
+
 # Remove rows where TEMPS.TC or TEMPS.VP is NaN
 df <- df %>%
   filter(!is.na(TEMPS.TC))
@@ -184,6 +187,14 @@ ml2 <- mlogit(
 summary(ml2)
 ```
 
+```{r}
+ml3 <- mlogit(
+  MODE ~ TEMPS | AR_JOBS30 + AL + HRE2 + M_PERS + D_DISTANCE2DOWNTOWN_KM + P_PERMIS,
+  df_long,
+  reflevel='VP'
+)
+summary(ml3)
+```
 
 
 ### Choses temporaires / brouillon
