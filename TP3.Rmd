@@ -188,18 +188,174 @@ summary(ml2)
 ```
 
 ```{r}
-ml3 <- mlogit(
+model <- mlogit(
   MODE ~ TEMPS | AR_JOBS30 + AL + HRE2 + M_PERS + D_DISTANCE2DOWNTOWN_KM + P_PERMIS,
   df_long,
   reflevel='VP'
 )
-summary(ml3)
+summary(model)
 ```
 
 
-### Choses temporaires / brouillon
+## Scenarios
+### Scenario #1: Variante #1: -20% TEMPS.TC + 20% AR_JOBS30 pour tout le monde
 ```{r}
-p <- ggplot(df, aes(x=MODE, y=AR_JOBS30)) + 
+df_sce1_var1 <- df
+df_sce1_var1$TEMPS.TC = 0.80 * df_sce1_var1$TEMPS.TC
+df_sce1_var1$AR_JOBS30 = 1.20 * df_sce1_var1$AR_JOBS30
+# Convert to wide format. This is required by the mlogit package.
+df_sce1_var1_long <- df_sce1_var1 %>%
+  mlogit.data(shape = "wide", choice = "MODE", varying = 42:45)
+
+sce1_var1 <- data.frame(Politique = c("Aucun changement", "Scenario #1: Variante #1: -20% TEMPS.TC et +20% AR_JOBS30"),
+              rbind(apply(predict(model,
+                                  newdata = df_long),
+                          2,
+                          mean),
+                    apply(predict(model,
+                                  newdata = df_sce1_var1_long),
+                          2,
+                          mean)))
+sce1_var1
+```
+### Scenario #1: Variante #2: -20% TEMPS.TC + 20% AR_JOBS30 pour les gens dans le pire quartile de l'accessibilité
+
+```{r}
+q1_ARJOBS_30 = quantile(df$AR_JOBS30)[2]
+q2_ARJOBS_30 = quantile(df$AR_JOBS30)[3]
+
+```
+
+
+```{r}
+## Ignorer cette boite de code... 
+#df_sce1_var2 <- df[df$AR_JOBS30 <= q1_ARJOBS_30,]
+#df_sce1_var2$TEMPS.TC = 0.80 * df_sce1_var2$TEMPS.TC
+#df_sce1_var2$AR_JOBS30 = 1.20 * df_sce1_var2$AR_JOBS30
+
+df_sce1_var2 <- df
+df_sce1_var2[df_sce1_var2$AR_JOBS30 <= q1_ARJOBS_30,]$TEMPS.TC = 0.80 * df_sce1_var2[df_sce1_var2$AR_JOBS30 <= q1_ARJOBS_30,]$TEMPS.TC
+df_sce1_var2[df_sce1_var2$AR_JOBS30 <= q1_ARJOBS_30,]$AR_JOBS30 = 1.20 * df_sce1_var1[df_sce1_var2$AR_JOBS30 <= q1_ARJOBS_30,]$AR_JOBS30
+# Convert to wide format. This is required by the mlogit package.
+df_sce1_var2_long <- df_sce1_var2 %>%
+  mlogit.data(shape = "wide", choice = "MODE", varying = 42:45)
+
+sce1_var2 <- data.frame(Politique = c("Aucun changement", "Scenario #1: Variante #2"),
+              rbind(apply(predict(model,
+                                  newdata = df_long),
+                          2,
+                          mean),
+                    apply(predict(model,
+                                  newdata = df_sce1_var2_long),
+                          2,
+                          mean)))
+#sce1_var2
+```
+
+```{r}
+q1_ARJOBS_30 = quantile(df$AR_JOBS30)[2]
+q2_ARJOBS_30 = quantile(df$AR_JOBS30)[3]
+
+df_subset <- df[df$AR_JOBS30 <= q1_ARJOBS_30,]
+df_sce1_var2 <- df_subset
+# Take only rows (i.e. 25% of dataframe) below the 1st quartile for column AR_JOBS30
+df_sce1_var2$TEMPS.TC = 0.80 * df_subset$TEMPS.TC # Reduce TEMPS.TC by 20%
+df_sce1_var2$AR_JOBS30 = 1.20 * df_sce1_var2$AR_JOBS30 # Increase AR_JOBS30 by 20%
+
+# Convert to wide format as required by mlogit package
+df_subset_long <- df_subset %>%
+  mlogit.data(shape = "wide", choice = "MODE", varying = 42:45)
+df_sce1_var2_long <- df_sce1_var2 %>%
+  mlogit.data(shape = "wide", choice = "MODE", varying = 42:45)
+
+sce1_var2 <- data.frame(Politique = c("Aucun changement", "Scenario #1: Variante #2"),
+              rbind(apply(predict(model, newdata = df_subset_long), 2, mean),
+                    apply(predict(model, newdata = df_sce1_var2_long), 2, mean)))
+sce1_var2
+```
+### Scenario #1: Variante #3: -40% TEMPS.TC + 40% AR_JOBS30 pour les gens dans le pire quartile de l'accessibilité
+
+```{r}
+q1_ARJOBS_30 = quantile(df$AR_JOBS30)[2]
+q2_ARJOBS_30 = quantile(df$AR_JOBS30)[3]
+
+df_subset <- df[df$AR_JOBS30 <= q1_ARJOBS_30,]
+df_sce1_var3 <- df_subset
+
+# Take only rows (i.e. 25% of dataframe) below the 1st quartile for column AR_JOBS30
+df_sce1_var3$TEMPS.TC = 0.60 * df_subset$TEMPS.TC # Reduce TEMPS.TC by 40%
+df_sce1_var3$AR_JOBS30 = 1.40 * df_sce1_var3$AR_JOBS30 # Increase AR_JOBS30 by 40%
+
+# Convert to wide format as required by mlogit package
+df_subset_long <- df_subset %>%
+  mlogit.data(shape = "wide", choice = "MODE", varying = 42:45)
+df_sce1_var3_long <- df_sce1_var3 %>%
+  mlogit.data(shape = "wide", choice = "MODE", varying = 42:45)
+
+sce1_var3 <- data.frame(Politique = c("Aucun changement", "Scenario #1: Variante #3"),
+              rbind(apply(predict(model, newdata = df_subset_long), 2, mean),
+                    apply(predict(model, newdata = df_sce1_var3_long), 2, mean)))
+sce1_var3
+```
+
+### Scenario #2: Variante #1: +20% AL pour tout le monde
+```{r}
+df_sce2_var1 <- df
+df_sce2_var1$AL = 1.20 * df_sce2_var1$AL
+# Convert to wide format. This is required by the mlogit package.
+df_sce2_var1_long <- df_sce2_var1 %>%
+  mlogit.data(shape = "wide", choice = "MODE", varying = 42:45)
+
+sce2_var1 <- data.frame(Politique = c("Aucun changement", "Scenario #2: Variante #1: +20% AL"),
+              rbind(apply(predict(model, newdata = df_long), 2, mean),
+                    apply(predict(model, newdata = df_sce2_var1_long), 2, mean)))
+sce2_var1
+```
+### Scenario #2: Variante #1: +20% AL pour les gens dans le pire quartile de l'accessibilité
+```{r}
+q1_AL = quantile(df$AL)[2]
+
+df_subset <- df[df$AL <= q1_AL,]
+df_sce2_var2 <- df_subset
+# Take only rows (i.e. 25% of dataframe) below the 1st quartile for column AL
+df_sce2_var2$AL = 1.20 * df_sce2_var2$AL # Increase AL by 20%
+
+# Convert to wide format as required by mlogit package
+df_subset_long <- df_subset %>%
+  mlogit.data(shape = "wide", choice = "MODE", varying = 42:45)
+df_sce2_var2_long <- df_sce2_var2 %>%
+  mlogit.data(shape = "wide", choice = "MODE", varying = 42:45)
+
+sce2_var2 <- data.frame(Politique = c("Aucun changement", "Scenario #2: Variante #2"),
+              rbind(apply(predict(model, newdata = df_subset_long), 2, mean),
+                    apply(predict(model, newdata = df_sce2_var2_long), 2, mean)))
+sce2_var2
+```
+```{r}
+q1_AL = quantile(df$AL)[2]
+
+df_subset <- df[df$AL <= q1_AL,]
+df_sce2_var3 <- df_subset
+# Take only rows (i.e. 25% of dataframe) below the 1st quartile for column AL
+df_sce2_var3$AL = 1.40 * df_sce2_var2$AL # Increase AL by 20%
+
+# Convert to wide format as required by mlogit package
+df_subset_long <- df_subset %>%
+  mlogit.data(shape = "wide", choice = "MODE", varying = 42:45)
+df_sce2_var3_long <- df_sce2_var3 %>%
+  mlogit.data(shape = "wide", choice = "MODE", varying = 42:45)
+
+sce2_var3 <- data.frame(Politique = c("Aucun changement", "Scenario #2: Variante #3"),
+              rbind(apply(predict(model, newdata = df_subset_long), 2, mean),
+                    apply(predict(model, newdata = df_sce2_var3_long), 2, mean)))
+sce2_var3
+```
+
+
+
+## Choses temporaires / brouillon
+```{r}
+p <- ggplot(df, aes(x = AR_JOBS30)) + 
   geom_boxplot()
 p
 ```
